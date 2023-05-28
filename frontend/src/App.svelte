@@ -1,24 +1,124 @@
 <script>
-  import logo from './assets/svelte.png'
-  import Counter from './lib/Counter.svelte'
-  import './lib/Tailwind.css'
-  let increment;
-</script>
+// @ts-nocheck
 
-<section class="text-gray-600 body-font">
-  <div class="container mx-auto flex px-5 py-8 items-center justify-center flex-col">
-    <img class="lg:w-1/6 md:w-3/6 w-5/6 mb-6 object-cover object-center rounded" alt="hero" src={logo}>
-    <div class="text-center lg:w-2/3 w-full">
-      <h1 class="title-font sm:text-4xl text-3xl mb-4 font-medium text-gray-900">Svelte + Vite + TailwindCSS = 🌸🌸🌸</h1>
-      <p class="mb-8 leading-relaxed">Meggings kinfolk echo park stumptown DIY, kale chips beard jianbing tousled. Chambray dreamcatcher trust fund, kitsch vice godard disrupt ramps hexagon mustache umami snackwave tilde chillwave ugh. Pour-over meditation PBR&amp;B pickled ennui celiac mlkshk freegan photo booth af fingerstache pitchfork.</p>
-      <a class="my-8 bg-red-600 text-white p-4 px-8 underline rounded-3xl" href="https://github.com/Lukem121/svelte-vite-tailwind-template">Please ⭐ on GitHub</a>
-      <div class="my-8">
-        <Counter bind:increment={increment} id="0" />
-      </div>
-      <div class="flex justify-center">
-        <button class="inline-flex text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded text-lg" on:click={increment}>Button</button>
-        <button class="ml-4 inline-flex text-gray-700 bg-gray-100 border-0 py-2 px-6 focus:outline-none hover:bg-gray-200 rounded text-lg" on:click={increment}>Button</button>
-      </div>
-    </div>
-  </div>
-</section>
+  import './lib/Tailwind.css'
+  import { onMount } from 'svelte';
+
+  let jsonData = null;
+  let formData = {
+    text: '',
+    is_done: false
+  };
+  let delete_id = '';
+
+  async function fetchData() {
+    const response = await fetch('http://localhost:8000');
+    jsonData = await response.json();
+  }
+
+  onMount(() => {
+    fetchData();
+  });
+
+  async function postData() {
+    const response = await fetch('http://localhost:8000/create', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(formData)
+    })
+    // console.log(JSON.stringify(formData))
+    formData.text = '';
+    formData.is_done = false;
+    fetchData();
+  }
+
+  async function deleteData(id) {
+    const url = `http://localhost:8000/delete/${id}`;
+
+    
+    try {
+      const response = await fetch(url ,{
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'}
+      });
+    }
+    catch (error) {
+      console.log('error al realizar la solicitud', error);
+    }
+    
+    delete_id = '';
+    fetchData();
+  }
+
+  let firstImage;
+  let secondImage;
+  let text_demo;
+
+  async function handleSubmit() {
+    const formData = new FormData();
+    formData.append('file', firstImage);
+    formData.append('fileb', secondImage);
+    formData.append('token', text_demo);
+
+    try {
+      const response = await fetch('http://localhost:8000/files/', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        alert('Imágenes guardadas exitosamente.');
+        // Realiza alguna acción adicional si es necesario
+      } else {
+        alert('Error al guardar las imágenes.');
+      }
+    } catch (error) {
+      console.error('Error al realizar la solicitud:', error);
+    }
+  }
+</script>
+<main class="bg-blue-200 text-center h-max">
+{#if jsonData }
+<table class="table-fixed">
+  <tr>
+    <td>id</td>
+    <td>tarea</td>
+    <td>estado</td>
+  </tr>
+  {#each Object.entries(jsonData) as [key, value]}
+    <tr>
+      <td>{value.id}</td>
+      <td>{value.text}</td>
+      <td>{value.is_done}</td>
+      <!-- {#each Object.values(value) as value2}
+        <td>{value2.id}</td>
+      {/each} -->
+    </tr>
+  {/each}
+</table>
+{/if}
+<div> 
+  <p>agregar tarea:</p>
+  <input bind:value={formData.text}/>
+  <select bind:value={formData.is_done} >
+    <option value=false>False</option>
+    <option value=true>True</option>
+  </select>
+  <button type="button" on:click={postData}>Agregar</button>
+</div>
+
+<div>
+  <p>borrar tarea:</p>
+  <input bind:value={delete_id}/>
+  <button type="button" on:click={() => deleteData(delete_id)}>Borrar</button>
+</div>
+
+<form on:submit|preventDefault={handleSubmit}>
+  <input type="file" on:change={event => firstImage = event.target.files[0]} />
+  <input type="file" on:change={event => secondImage = event.target.files[0]} />
+  <input type="text" bind:value={text_demo}/>
+  <button type="submit">Enviar</button>
+</form>
+<img src="http://localhost:8000/imagenes/e4a7c7d1-6366-4ace-a311-b063aac0de37.jpg" alt="">
+
+</main>
